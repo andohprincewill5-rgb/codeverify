@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'subscriptions_admin_screen.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import '../services/verification_service.dart';
@@ -71,7 +72,6 @@ class _AdminScreenState extends State<AdminScreen> {
       return;
     }
 
-    // Build CSV content
     final buffer = StringBuffer();
     buffer.writeln('ID,Code Value,Code Type,Is Legit,Source,Created At');
     for (final code in _codes) {
@@ -84,7 +84,6 @@ class _AdminScreenState extends State<AdminScreen> {
       buffer.writeln('$id,$value,$type,$isLegit,$source,$createdAt');
     }
 
-    // Download the file in browser
     final bytes = utf8.encode(buffer.toString());
     final blob = html.Blob([bytes], 'text/csv');
     final url = html.Url.createObjectUrlFromBlob(blob);
@@ -221,7 +220,15 @@ class _AdminScreenState extends State<AdminScreen> {
         title: Text('Admin Panel',
             style: GoogleFonts.spaceGrotesk(color: Colors.white)),
         actions: [
-          // Export button
+          IconButton(
+            icon: const Icon(Icons.people_rounded),
+            tooltip: 'Manage Subscriptions',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const SubscriptionsAdminScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.download_rounded),
             tooltip: 'Export to CSV',
@@ -249,7 +256,6 @@ class _AdminScreenState extends State<AdminScreen> {
               child: CircularProgressIndicator(color: Color(0xFF00E5A0)))
           : Column(
               children: [
-                // Stats bar
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Row(
@@ -280,8 +286,6 @@ class _AdminScreenState extends State<AdminScreen> {
                     ],
                   ),
                 ),
-
-                // Search Bar
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: TextField(
@@ -313,7 +317,6 @@ class _AdminScreenState extends State<AdminScreen> {
                     ),
                   ),
                 ),
-
                 if (_searchController.text.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -326,9 +329,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       ),
                     ),
                   ),
-
                 const SizedBox(height: 8),
-
                 Expanded(
                   child: _filteredCodes.isEmpty
                       ? Center(
@@ -355,8 +356,8 @@ class _AdminScreenState extends State<AdminScreen> {
                                 _searchController.text.isNotEmpty
                                     ? 'Try a different search term'
                                     : 'Tap + Add Code to get started',
-                                style:
-                                    GoogleFonts.inter(color: Colors.white38),
+                                style: GoogleFonts.inter(
+                                    color: Colors.white38),
                               ),
                             ],
                           ),
