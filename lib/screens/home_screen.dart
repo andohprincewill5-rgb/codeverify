@@ -5,6 +5,7 @@ import 'scanner_screen.dart';
 import 'admin_screen.dart';
 import 'result_screen.dart';
 import 'history_screen.dart';
+import 'pricing_screen.dart';
 import '../services/verification_service.dart';
 import '../main.dart';
 
@@ -21,7 +22,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0A0A0F) : const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +82,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
 
-              const SizedBox(height: 60),
+              const SizedBox(height: 40),
 
               _ActionCard(
                 icon: Icons.qr_code_scanner_rounded,
@@ -95,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => const ScannerScreen()),
                 ),
-              ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2),
+              ).animate().fadeIn(delay: 300.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -108,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                 textColor: textColor,
                 subtitleColor: subtitleColor,
                 onTap: () => _showManualEntryDialog(context),
-              ).animate().fadeIn(delay: 500.ms, duration: 600.ms).slideY(begin: 0.2),
+              ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -126,6 +127,22 @@ class HomeScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(builder: (_) => const HistoryScreen()),
                   ),
+                ),
+              ).animate().fadeIn(delay: 500.ms, duration: 600.ms).slideY(begin: 0.2),
+
+              const SizedBox(height: 16),
+
+              _ActionCard(
+                icon: Icons.workspace_premium_rounded,
+                title: 'Pricing Plans',
+                subtitle: 'Subscribe to unlock more features',
+                color: const Color(0xFF00B4D8),
+                cardColor: cardColor,
+                textColor: textColor,
+                subtitleColor: subtitleColor,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PricingScreen()),
                 ),
               ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.2),
 
@@ -148,7 +165,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 700.ms, duration: 600.ms).slideY(begin: 0.2),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
               Center(
                 child: Text(
@@ -159,6 +176,8 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 24),
             ],
           ),
         ),
