@@ -1,46 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="codeverify">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <!-- SEO Meta Tags -->
+  <title>CodeVerify - Scan & Verify Any Code Instantly</title>
+  <meta name="description" content="CodeVerify lets you scan QR codes, barcodes, and license keys to instantly verify if they are legitimate or fake. Protect yourself from counterfeit products.">
+  <meta name="keywords" content="code verification, QR code scanner, barcode verifier, fake code detector, product authentication, license key verifier, Cameroon">
+  <meta name="author" content="CodeVerify">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph (for sharing on WhatsApp, Facebook etc) -->
+  <meta property="og:title" content="CodeVerify - Scan & Verify Any Code Instantly">
+  <meta property="og:description" content="Scan QR codes, barcodes, and license keys to instantly verify if they are legitimate or fake.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://resonant-madeleine-777071.netlify.app">
+  <meta property="og:image" content="https://resonant-madeleine-777071.netlify.app/icons/Icon-512.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CodeVerify - Scan & Verify Any Code Instantly">
+  <meta name="twitter:description" content="Scan QR codes, barcodes, and license keys to instantly verify if they are legitimate or fake.">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-192.png">
 
-  <title>codeverify</title>
-  <link rel="manifest" href="manifest.json">
+  <!-- Theme color -->
+  <meta name="theme-color" content="#00E5A0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CodeVerify">
+
+  <script>
+    var serviceWorkerVersion = null;
+    var scriptLoaded = false;
+    function loadMainDartJs() {
+      if (scriptLoaded) {
+        return;
+      }
+      scriptLoaded = true;
+      var scriptTag = document.createElement('script');
+      scriptTag.src = 'main.dart.js';
+      scriptTag.type = 'application/javascript';
+      document.body.append(scriptTag);
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        var serviceWorkerUrl = 'flutter_service_worker.js?v=' + serviceWorkerVersion;
+        navigator.serviceWorker.register(serviceWorkerUrl)
+          .then((reg) => {
+            function waitForActivation(serviceWorker) {
+              serviceWorker.addEventListener('statechange', () => {
+                if (serviceWorker.state == 'activated') {
+                  console.log('Installed new service worker.');
+                  loadMainDartJs();
+                }
+              });
+            }
+            if (!reg.active && (reg.installing || reg.waiting)) {
+              waitForActivation(reg.installing || reg.waiting);
+            } else if (!reg.active.scriptURL.endsWith(serviceWorkerVersion)) {
+              console.log('New service worker available.');
+              reg.update();
+              waitForActivation(reg.installing);
+            } else {
+              console.log('Loading app from service worker.');
+              loadMainDartJs();
+            }
+          });
+
+        if (!navigator.serviceWorker.controller) {
+          console.log('No service worker controller yet.');
+          loadMainDartJs();
+        }
+      });
+    } else {
+      loadMainDartJs();
+    }
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <style>
+    body {
+      margin: 0;
+      background-color: #0A0A0F;
+    }
+    #splash {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #0A0A0F;
+    }
+    #splash svg {
+      width: 180px;
+      height: 180px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    #splash p {
+      color: #00E5A0;
+      font-family: sans-serif;
+      font-size: 14px;
+      margin-top: 24px;
+      opacity: 0.7;
+      letter-spacing: 2px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+  </style>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Splash screen -->
+  <div id="splash">
+    <svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="95" r="80" fill="#00E5A0" opacity="0.06"/>
+      <circle cx="100" cy="95" r="60" fill="#00E5A0" opacity="0.06"/>
+      <path d="M100 20 L150 40 L150 110 Q150 150 100 170 Q50 150 50 110 L50 40 Z" fill="#0A0A1F" stroke="#00E5A0" stroke-width="2"/>
+      <path d="M72 98 L88 118 L130 78" fill="none" stroke="#00E5A0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="100" y="200" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700">
+        <tspan fill="#00E5A0">Code</tspan><tspan fill="#ffffff">Verify</tspan>
+      </text>
+    </svg>
+    <p>LOADING...</p>
+  </div>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var splash = document.getElementById('splash');
+      if (splash) {
+        splash.style.transition = 'opacity 0.5s';
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 500);
+      }
+    });
+  </script>
 </body>
 </html>
