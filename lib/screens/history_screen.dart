@@ -34,6 +34,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Future<void> _deleteItem(int id, int index) async {
+    // Remove from UI immediately for smooth experience
+    setState(() => _history.removeAt(index));
+    try {
+      await _service.deleteScanById(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Entry deleted', style: GoogleFonts.inter()),
+            backgroundColor: const Color(0xFF1A1A2E),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: const Color(0xFF00E5A0),
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Reload if error
+      _loadHistory();
+    }
+  }
+
   Future<void> _clearHistory() async {
     showDialog(
       context: context,
@@ -169,8 +193,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       const SizedBox(height: 8),
                       Text('Start scanning codes to see history here',
                           style: GoogleFonts.inter(
-                              color:
-                                  isDark ? Colors.white38 : Colors.black38)),
+                              color: isDark
+                                  ? Colors.white38
+                                  : Colors.black38)),
                     ],
                   ),
                 )
@@ -218,7 +243,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
 
-                    // Clear history button
+                    // Clear all button
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                       child: SizedBox(
@@ -243,6 +268,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
 
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.swipe_left_rounded,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              size: 16),
+                          const SizedBox(width: 6),
+                          Text('Swipe left on any item to delete it',
+                              style: GoogleFonts.inter(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black38,
+                                  fontSize: 12)),
+                        ],
+                      ),
+                    ),
+
                     Expanded(
                       child: ListView.builder(
                         padding:
@@ -253,66 +296,96 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           final verdict = item['verdict'] ?? 'Unknown';
                           final color = _verdictColor(verdict);
                           final icon = _verdictIcon(verdict);
+                          final id = item['id'] as int;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: color.withOpacity(0.3), width: 1),
+                          return Dismissible(
+                            key: Key(id.toString()),
+                            direction: DismissDirection.endToStart,
+                            onDismissed: (_) => _deleteItem(id, i),
+                            background: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.only(right: 20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF6B6B),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.centerRight,
+                              child: const Icon(Icons.delete_rounded,
+                                  color: Colors.white, size: 24),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: color.withOpacity(0.15),
-                                    shape: BoxShape.circle,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: color.withOpacity(0.3),
+                                    width: 1),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: color.withOpacity(0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(icon,
+                                        color: color, size: 20),
                                   ),
-                                  child:
-                                      Icon(icon, color: color, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item['code_value'] ?? '',
-                                        style: GoogleFonts.inter(
-                                            color: textColor,
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 14),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Row(
-                                        children: [
-                                          Text(verdict,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['code_value'] ?? '',
+                                          style: GoogleFonts.inter(
+                                              color: textColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 14),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          children: [
+                                            Text(verdict,
+                                                style: GoogleFonts.inter(
+                                                    color: color,
+                                                    fontSize: 12)),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '· ${_formatDate(item['created_at'])}',
                                               style: GoogleFonts.inter(
-                                                  color: color,
-                                                  fontSize: 12)),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '· ${_formatDate(item['created_at'])}',
-                                            style: GoogleFonts.inter(
-                                                color: isDark
-                                                    ? Colors.white38
-                                                    : Colors.black38,
-                                                fontSize: 11),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                                  color: isDark
+                                                      ? Colors.white38
+                                                      : Colors.black38,
+                                                  fontSize: 11),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  // Delete button
+                                  IconButton(
+                                    icon: Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: isDark
+                                            ? Colors.white24
+                                            : Colors.black26,
+                                        size: 20),
+                                    onPressed: () =>
+                                        _deleteItem(id, i),
+                                  ),
+                                ],
+                              ),
                             ),
                           ).animate().fadeIn(
-                              delay: Duration(milliseconds: i * 50));
+                              delay:
+                                  Duration(milliseconds: i * 30));
                         },
                       ),
                     ),

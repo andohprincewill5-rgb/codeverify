@@ -88,6 +88,10 @@ class VerificationService {
     await _supabase.from('scan_history').delete().neq('id', 0);
   }
 
+  Future<void> deleteScanById(int id) async {
+    await _supabase.from('scan_history').delete().eq('id', id);
+  }
+
   Future<bool> verifyAdminPassword(String password) async {
     try {
       final response = await _supabase
