@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/verification_service.dart';
 import '../services/code_analyzer.dart';
+import '../main.dart';
 
 class ResultScreen extends StatefulWidget {
   final String scannedCode;
@@ -19,6 +20,7 @@ class _ResultScreenState extends State<ResultScreen> {
   CodeAnalysis? _analysis;
   bool _loading = true;
   String? _error;
+  bool _registered = false;
 
   @override
   void initState() {
@@ -41,7 +43,6 @@ class _ResultScreenState extends State<ResultScreen> {
         verdict = 'Not Legitimate';
       }
 
-      // Log the scan to history
       await _service.logScan(
         codeValue: widget.scannedCode,
         verdict: verdict,
@@ -52,6 +53,13 @@ class _ResultScreenState extends State<ResultScreen> {
         _analysis = analysis;
         _loading = false;
       });
+
+      // Show register dialog if auto-analyzed as legit and not in registry
+      if (!result.found && analysis != null && analysis.isLegit) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) _showRegisterDialog();
+        });
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -60,21 +68,167 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
+  // Detect code type automatically
+  String _detectCodeType() {
+    final code = widget.scannedCode;
+    if (code.startsWith('http://') || code.startsWith('https://')) return 'URL';
+    if (RegExp(r'^\d{8}$').hasMatch(code)) return 'EAN-8 Barcode';
+    if (RegExp(r'^\d{12}$').hasMatch(code)) return 'UPC-A Barcode';
+    if (RegExp(r'^\d{13}$').hasMatch(code)) return 'EAN-13 Barcode';
+    if (RegExp(r'^[A-Z0-9]{4,6}(-[A-Z0-9]{4,6}){2,5}$', caseSensitive: false).hasMatch(code)) return 'License Key';
+    return 'QR Code';
+  }
+
+  // Detect source automatically
+  String _detectSource() {
+    final code = widget.scannedCode;
+    if (code.startsWith('http://') || code.startsWith('https://')) {
+      return Uri.tryParse(code)?.host ?? 'Unknown';
+    }
+    return 'Scanned';
+  }
+
+  void _showRegisterDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: themeNotifier.isDark
+            ? const Color(0xFF1A1A2E)
+            : Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.add_circle_rounded,
+                color: Color(0xFF00E5A0), size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Register This Code?',
+                  style: GoogleFonts.spaceGrotesk(
+                      color: themeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black87,
+                      fontSize: 16)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This code appears legitimate but is not in your registry. Would you like to register it automatically?',
+              style: GoogleFonts.inter(
+                  color: themeNotifier.isDark
+                      ? Colors.white70
+                      : Colors.black87,
+                  fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            // Preview of what will be saved
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E5A0).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: const Color(0xFF00E5A0).withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Details that will be saved:',
+                      style: GoogleFonts.spaceGrotesk(
+                          color: const Color(0xFF00E5A0),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  _PreviewRow(label: 'Code', value: widget.scannedCode),
+                  _PreviewRow(label: 'Type', value: _detectCodeType()),
+                  _PreviewRow(label: 'Source', value: _detectSource()),
+                  _PreviewRow(label: 'Status', value: 'Legit ✅'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Code left unregistered.',
+                      style: GoogleFonts.inter()),
+                  backgroundColor: const Color(0xFF1A1A2E),
+                ),
+              );
+            },
+            child: Text('No',
+                style: GoogleFonts.inter(color: Colors.white38)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00E5A0),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _service.addCode(
+                  codeValue: widget.scannedCode,
+                  codeType: _detectCodeType(),
+                  isLegit: true,
+                  source: _detectSource(),
+                );
+                setState(() => _registered = true);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ Code registered successfully!',
+                          style: GoogleFonts.inter()),
+                      backgroundColor: const Color(0xFF1A1A2E),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.save_rounded, size: 16),
+            label: Text('Yes, Register It',
+                style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = themeNotifier.isDark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final bgColor =
+        isDark ? const Color(0xFF0A0A0F) : const Color(0xFFF5F5F5);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: textColor,
         title: Text('Verification Result',
-            style: GoogleFonts.spaceGrotesk(color: Colors.white)),
+            style: GoogleFonts.spaceGrotesk(color: textColor)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: _loading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF00E5A0)))
+                child:
+                    CircularProgressIndicator(color: Color(0xFF00E5A0)))
             : _error != null
                 ? _buildError()
                 : _buildResult(),
@@ -151,7 +305,11 @@ class _ResultScreenState extends State<ResultScreen> {
           const SizedBox(height: 8),
           Text(statusSubtext,
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: Colors.white54, fontSize: 15))
+              style: GoogleFonts.inter(
+                  color: themeNotifier.isDark
+                      ? Colors.white54
+                      : Colors.black45,
+                  fontSize: 15))
               .animate()
               .fadeIn(delay: 400.ms),
           if (showAnalysis) ...[
@@ -162,7 +320,8 @@ class _ResultScreenState extends State<ResultScreen> {
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: statusColor.withOpacity(0.4)),
+                border:
+                    Border.all(color: statusColor.withOpacity(0.4)),
               ),
               child: Text(
                 'Auto-analyzed · ${(_analysis!.confidence * 100).toInt()}% confidence',
@@ -173,22 +332,52 @@ class _ResultScreenState extends State<ResultScreen> {
               ),
             ).animate().fadeIn(delay: 450.ms),
           ],
+          if (_registered) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E5A0).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: const Color(0xFF00E5A0).withOpacity(0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: Color(0xFF00E5A0), size: 14),
+                  const SizedBox(width: 6),
+                  Text('Registered to registry ✅',
+                      style: GoogleFonts.inter(
+                          color: const Color(0xFF00E5A0),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ).animate().fadeIn(),
+          ],
           const SizedBox(height: 40),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A2E),
+              color: themeNotifier.isDark
+                  ? const Color(0xFF1A1A2E)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: statusColor.withOpacity(0.3), width: 1),
+              border: Border.all(
+                  color: statusColor.withOpacity(0.3), width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Code Details',
                     style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
+                        color: themeNotifier.isDark
+                            ? Colors.white
+                            : Colors.black87,
                         fontSize: 16,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
@@ -205,12 +394,47 @@ class _ResultScreenState extends State<ResultScreen> {
                 if (showAnalysis) ...[
                   const SizedBox(height: 10),
                   _DetailRow(
-                      label: 'Analysis', value: 'Auto (not in registry)'),
+                      label: 'Type', value: _detectCodeType()),
+                  const SizedBox(height: 10),
+                  _DetailRow(
+                      label: 'Source', value: _detectSource()),
+                  const SizedBox(height: 10),
+                  _DetailRow(
+                      label: 'Registry',
+                      value: _registered
+                          ? 'Registered ✅'
+                          : 'Not registered'),
                 ],
               ],
             ),
           ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
-          const SizedBox(height: 24),
+
+          // Register button if not registered yet
+          if (!result.found &&
+              _analysis != null &&
+              _analysis!.isLegit &&
+              !_registered) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF00E5A0),
+                  side: const BorderSide(color: Color(0xFF00E5A0)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _showRegisterDialog,
+                icon: const Icon(Icons.add_circle_outline_rounded),
+                label: Text('Register This Code',
+                    style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.w600)),
+              ),
+            ).animate().fadeIn(delay: 550.ms),
+          ],
+
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -244,11 +468,15 @@ class _ResultScreenState extends State<ResultScreen> {
           const SizedBox(height: 16),
           Text('Connection Error',
               style: GoogleFonts.spaceGrotesk(
-                  color: Colors.white, fontSize: 20)),
+                  color: themeNotifier.isDark ? Colors.white : Colors.black87,
+                  fontSize: 20)),
           const SizedBox(height: 8),
           Text(_error ?? 'Unknown error',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: Colors.white54)),
+              style: GoogleFonts.inter(
+                  color: themeNotifier.isDark
+                      ? Colors.white54
+                      : Colors.black45)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
@@ -259,6 +487,33 @@ class _ResultScreenState extends State<ResultScreen> {
               _verify();
             },
             child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _PreviewRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label: ',
+              style: GoogleFonts.inter(
+                  color: Colors.white54, fontSize: 12)),
+          Expanded(
+            child: Text(value,
+                style: GoogleFonts.inter(
+                    color: Colors.white, fontSize: 12),
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -277,10 +532,18 @@ class _DetailRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$label: ',
-            style: GoogleFonts.inter(color: Colors.white54, fontSize: 14)),
+            style: GoogleFonts.inter(
+                color: themeNotifier.isDark
+                    ? Colors.white54
+                    : Colors.black45,
+                fontSize: 14)),
         Expanded(
           child: Text(value,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 14)),
+              style: GoogleFonts.inter(
+                  color: themeNotifier.isDark
+                      ? Colors.white
+                      : Colors.black87,
+                  fontSize: 14)),
         ),
       ],
     );
@@ -301,7 +564,11 @@ class _ClickableDetailRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$label: ',
-            style: GoogleFonts.inter(color: Colors.white54, fontSize: 14)),
+            style: GoogleFonts.inter(
+                color: themeNotifier.isDark
+                    ? Colors.white54
+                    : Colors.black45,
+                fontSize: 14)),
         Expanded(
           child: _isUrl
               ? GestureDetector(
@@ -315,8 +582,11 @@ class _ClickableDetailRow extends StatelessWidget {
                           decorationColor: const Color(0xFF00E5A0))),
                 )
               : Text(value,
-                  style:
-                      GoogleFonts.inter(color: Colors.white, fontSize: 14)),
+                  style: GoogleFonts.inter(
+                      color: themeNotifier.isDark
+                          ? Colors.white
+                          : Colors.black87,
+                      fontSize: 14)),
         ),
       ],
     );
