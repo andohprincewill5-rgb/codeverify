@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math';
 import 'config/supabase_config.dart';
 import 'screens/home_screen.dart';
 
@@ -11,7 +12,23 @@ void main() async {
     anonKey: SupabaseConfig.supabaseKey,
   );
 
+  // Generate device ID if not exists
+  if (DeviceManager.deviceId.isEmpty) {
+    DeviceManager.deviceId = DeviceManager.generateId();
+  }
+
   runApp(const CodeVerifyApp());
+}
+
+// Global device manager
+class DeviceManager {
+  static String deviceId = '';
+
+  static String generateId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final random = Random.secure();
+    return List.generate(32, (i) => chars[random.nextInt(chars.length)]).join();
+  }
 }
 
 class ThemeNotifier extends ChangeNotifier {
