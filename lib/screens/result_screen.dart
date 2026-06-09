@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/verification_service.dart';
 import '../services/code_analyzer.dart';
+import '../services/device_service.dart';
 import '../main.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -43,6 +44,7 @@ class _ResultScreenState extends State<ResultScreen> {
         verdict = 'Not Legitimate';
       }
 
+      await DeviceService().incrementScan(DeviceManager.deviceId);
       await _service.logScan(
         codeValue: widget.scannedCode,
         verdict: verdict,

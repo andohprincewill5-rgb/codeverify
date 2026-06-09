@@ -6,11 +6,65 @@ import 'admin_screen.dart';
 import 'result_screen.dart';
 import 'history_screen.dart';
 import 'pricing_screen.dart';
+import 'scan_limit_screen.dart';
 import '../services/verification_service.dart';
+import '../services/device_service.dart';
 import '../main.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _deviceService = DeviceService();
+  int _scansUsed = 0;
+  int _scansLimit = 15;
+  String _plan = 'free';
+  bool _loadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeviceStats();
+  }
+
+  Future<void> _loadDeviceStats() async {
+    try {
+      final stats =
+          await _deviceService.getDeviceStats(DeviceManager.deviceId);
+      setState(() {
+        _scansUsed = stats['scans_used'] as int? ?? 0;
+        _scansLimit = stats['scans_limit'] as int? ?? 15;
+        _plan = stats['plan'] as String? ?? 'free';
+        _loadingStats = false;
+      });
+    } catch (e) {
+      setState(() => _loadingStats = false);
+    }
+  }
+
+  Future<bool> _checkScanLimit(BuildContext context) async {
+    final canScan =
+        await _deviceService.canScan(DeviceManager.deviceId);
+    if (!canScan) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScanLimitScreen(
+              scansUsed: _scansUsed,
+              scansLimit: _scansLimit,
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +74,8 @@ class HomeScreen extends StatelessWidget {
     final cardColor = isDark ? const Color(0xFF1A1A2E) : Colors.white;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A0F) : const Color(0xFFF5F5F5),
+      backgroundColor:
+          isDark ? const Color(0xFF0A0A0F) : const Color(0xFFF5F5F5),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -57,13 +112,18 @@ class HomeScreen extends StatelessWidget {
                       duration: const Duration(milliseconds: 300),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+                        color: isDark
+                            ? const Color(0xFF1A1A2E)
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: const Color(0xFF00E5A0).withOpacity(0.4)),
+                            color: const Color(0xFF00E5A0)
+                                .withOpacity(0.4)),
                       ),
                       child: Icon(
-                        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                        isDark
+                            ? Icons.light_mode_rounded
+                            : Icons.dark_mode_rounded,
                         color: const Color(0xFF00E5A0),
                         size: 22,
                       ),
@@ -82,21 +142,96 @@ class HomeScreen extends StatelessWidget {
                 ),
               ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
+
+              // Scan usage bar
+              if (!_loadingStats)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: _plan == 'free'
+                            ? const Color(0xFFFFB800).withOpacity(0.3)
+                            : const Color(0xFF00E5A0).withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _plan == 'free'
+                                ? '🆓 Free Plan'
+                                : _plan == 'basic'
+                                    ? '⭐ Basic Plan'
+                                    : _plan == 'pro'
+                                        ? '🚀 Pro Plan'
+                                        : '💼 Business Plan',
+                            style: GoogleFonts.spaceGrotesk(
+                                color: textColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13),
+                          ),
+                          Text(
+                            _plan == 'pro' || _plan == 'business'
+                                ? 'Unlimited scans'
+                                : '$_scansUsed / $_scansLimit scans',
+                            style: GoogleFonts.inter(
+                                color: _plan == 'free'
+                                    ? const Color(0xFFFFB800)
+                                    : const Color(0xFF00E5A0),
+                                fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      if (_plan == 'free' || _plan == 'basic') ...[
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: _scansLimit > 0
+                                ? (_scansUsed / _scansLimit)
+                                    .clamp(0.0, 1.0)
+                                : 0,
+                            backgroundColor: const Color(0xFFFFB800)
+                                .withOpacity(0.2),
+                            valueColor:
+                                const AlwaysStoppedAnimation<Color>(
+                                    Color(0xFFFFB800)),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 300.ms),
+
+              const SizedBox(height: 24),
 
               _ActionCard(
                 icon: Icons.qr_code_scanner_rounded,
                 title: 'Scan Code',
-                subtitle: 'Use your camera to scan QR, barcode, or any code',
+                subtitle:
+                    'Use your camera to scan QR, barcode, or any code',
                 color: const Color(0xFF00E5A0),
                 cardColor: cardColor,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ScannerScreen()),
-                ),
-              ).animate().fadeIn(delay: 300.ms, duration: 600.ms).slideY(begin: 0.2),
+                onTap: () async {
+                  final canScan = await _checkScanLimit(context);
+                  if (canScan && mounted) {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ScannerScreen()),
+                    );
+                    _loadDeviceStats();
+                  }
+                },
+              ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -108,8 +243,13 @@ class HomeScreen extends StatelessWidget {
                 cardColor: cardColor,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
-                onTap: () => _showManualEntryDialog(context),
-              ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideY(begin: 0.2),
+                onTap: () async {
+                  final canScan = await _checkScanLimit(context);
+                  if (canScan && mounted) {
+                    _showManualEntryDialog(context);
+                  }
+                },
+              ).animate().fadeIn(delay: 500.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -125,10 +265,11 @@ class HomeScreen extends StatelessWidget {
                   context,
                   onSuccess: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const HistoryScreen()),
                   ),
                 ),
-              ).animate().fadeIn(delay: 500.ms, duration: 600.ms).slideY(begin: 0.2),
+              ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -140,11 +281,15 @@ class HomeScreen extends StatelessWidget {
                 cardColor: cardColor,
                 textColor: textColor,
                 subtitleColor: subtitleColor,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PricingScreen()),
-                ),
-              ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.2),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const PricingScreen()),
+                  );
+                  _loadDeviceStats();
+                },
+              ).animate().fadeIn(delay: 650.ms, duration: 600.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 16),
 
@@ -160,7 +305,8 @@ class HomeScreen extends StatelessWidget {
                   context,
                   onSuccess: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const AdminScreen()),
                   ),
                 ),
               ).animate().fadeIn(delay: 700.ms, duration: 600.ms).slideY(begin: 0.2),
@@ -176,7 +322,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
             ],
           ),
@@ -185,7 +330,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showPasswordDialog(BuildContext context, {required VoidCallback onSuccess}) {
+  void _showPasswordDialog(BuildContext context,
+      {required VoidCallback onSuccess}) {
     final controller = TextEditingController();
     bool obscure = true;
     bool loading = false;
@@ -241,7 +387,8 @@ class HomeScreen extends StatelessWidget {
                             ? Icons.visibility_rounded
                             : Icons.visibility_off_rounded,
                         color: Colors.white38),
-                    onPressed: () => setState(() => obscure = !obscure),
+                    onPressed: () =>
+                        setState(() => obscure = !obscure),
                   ),
                   filled: true,
                   fillColor: themeNotifier.isDark
@@ -262,7 +409,8 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(error!,
                     style: GoogleFonts.inter(
-                        color: const Color(0xFFFF6B6B), fontSize: 13)),
+                        color: const Color(0xFFFF6B6B),
+                        fontSize: 13)),
               ],
             ],
           ),
@@ -287,7 +435,8 @@ class HomeScreen extends StatelessWidget {
                       });
                       final service = VerificationService();
                       final correct = await service
-                          .verifyAdminPassword(controller.text.trim());
+                          .verifyAdminPassword(
+                              controller.text.trim());
                       if (correct) {
                         Navigator.pop(ctx);
                         onSuccess();
@@ -322,11 +471,15 @@ class HomeScreen extends StatelessWidget {
             : Colors.white,
         title: Text('Enter Code',
             style: GoogleFonts.spaceGrotesk(
-                color: themeNotifier.isDark ? Colors.white : Colors.black87)),
+                color: themeNotifier.isDark
+                    ? Colors.white
+                    : Colors.black87)),
         content: TextField(
           controller: controller,
           style: TextStyle(
-              color: themeNotifier.isDark ? Colors.white : Colors.black87),
+              color: themeNotifier.isDark
+                  ? Colors.white
+                  : Colors.black87),
           decoration: InputDecoration(
             hintText: 'Paste or type code here...',
             hintStyle: TextStyle(
@@ -335,12 +488,13 @@ class HomeScreen extends StatelessWidget {
                     : Colors.black38),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF00E5A0)),
+              borderSide:
+                  const BorderSide(color: Color(0xFF00E5A0)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: Color(0xFF00E5A0), width: 2),
+              borderSide: const BorderSide(
+                  color: Color(0xFF00E5A0), width: 2),
             ),
           ),
           maxLines: 3,
@@ -356,16 +510,17 @@ class HomeScreen extends StatelessWidget {
               backgroundColor: const Color(0xFF00E5A0),
               foregroundColor: Colors.black,
             ),
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
-                Navigator.push(
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        ResultScreen(scannedCode: controller.text.trim()),
+                    builder: (_) => ResultScreen(
+                        scannedCode: controller.text.trim()),
                   ),
                 );
+                _loadDeviceStats();
               }
             },
             child: const Text('Verify'),

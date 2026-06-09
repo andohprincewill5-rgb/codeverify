@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'config/supabase_config.dart';
 import 'screens/home_screen.dart';
 
@@ -12,15 +14,17 @@ void main() async {
     anonKey: SupabaseConfig.supabaseKey,
   );
 
-  // Generate device ID if not exists
-  if (DeviceManager.deviceId.isEmpty) {
-    DeviceManager.deviceId = DeviceManager.generateId();
+  // Get or generate device ID using localStorage
+  String? existingId = html.window.localStorage['codeverify_device_id'];
+  if (existingId == null || existingId.isEmpty) {
+    existingId = DeviceManager.generateId();
+    html.window.localStorage['codeverify_device_id'] = existingId;
   }
+  DeviceManager.deviceId = existingId;
 
   runApp(const CodeVerifyApp());
 }
 
-// Global device manager
 class DeviceManager {
   static String deviceId = '';
 
